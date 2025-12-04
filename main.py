@@ -24,11 +24,12 @@ class ChatbotApp:
         self.groq_error = None
         self.current_user_id: Optional[int] = None
         self.current_username: Optional[str] = None
+        self.is_dark_mode = True  # Estado del tema
         
         # Configurar página
-        self.page.title = "Chatbot IA - Groq"
+        self.page.title = "Chatbot IA"
         self.page.theme_mode = ft.ThemeMode.DARK
-        self.page.bgcolor = "#0A0E27"  # Azul oscuro elegante
+        self.page.bgcolor = "#1a1a1a"  # Gris oscuro para modo oscuro
         self.page.padding = 0
         self.page.window_width = 900
         self.page.window_height = 700
@@ -66,6 +67,23 @@ class ChatbotApp:
         )
         self.page.open(dlg)
     
+    def toggle_theme(self, e=None):
+        """Cambia entre modo claro y oscuro."""
+        self.is_dark_mode = not self.is_dark_mode
+        
+        if self.is_dark_mode:
+            self.page.theme_mode = ft.ThemeMode.DARK
+            self.page.bgcolor = "#1a1a1a"
+        else:
+            self.page.theme_mode = ft.ThemeMode.LIGHT
+            self.page.bgcolor = "white"
+        
+        # Recargar la pantalla actual
+        if self.current_user_id is None:
+            self.show_login_screen()
+        else:
+            self.show_chat_screen()
+    
     def show_login_screen(self):
         """Muestra la pantalla de selección de usuarios."""
         # Obtener todos los usuarios
@@ -94,7 +112,7 @@ class ChatbotApp:
                 ),
                 padding=8,
                 border_radius=8,
-                bgcolor="#1F2937",
+                bgcolor="#006341",
                 border=ft.border.all(1, "#FBBF24"),
                 visible=True,
             )
@@ -108,8 +126,8 @@ class ChatbotApp:
         for user in users:
             username = user['username']
             
-            # Usar diferentes colores para cada usuario (ciclando entre opciones)
-            colors = ["#06B6D4", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444"]
+            # Usar diferentes colores para cada usuario (tonos verdes institucionales)
+            colors = ["#A4D65E", "#00A859", "#A4D65E", "#00A859", "#A4D65E"]
             color = colors[user['id'] % len(colors)]
             
             user_card = ft.Container(
@@ -120,7 +138,7 @@ class ChatbotApp:
                             username,
                             size=16,
                             weight=ft.FontWeight.BOLD,
-                            color="#E5E7EB",
+                            color="white",
                             text_align=ft.TextAlign.CENTER,
                         ),
                     ],
@@ -129,8 +147,8 @@ class ChatbotApp:
                 ),
                 padding=20,
                 border_radius=12,
-                bgcolor="#1A1F3A",
-                border=ft.border.all(2, "#4A5568"),
+                bgcolor="#006341",
+                border=ft.border.all(2, "#00A859"),
                 width=140,
                 height=140,
                 on_click=lambda e, u=username: on_user_click(u),
@@ -142,12 +160,12 @@ class ChatbotApp:
         add_user_card = ft.Container(
             content=ft.Column(
                 [
-                    ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE, size=50, color="#9CA3AF"),
+                    ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE, size=50, color="#A4D65E"),
                     ft.Text(
                         "Nuevo",
                         size=16,
                         weight=ft.FontWeight.BOLD,
-                        color="#9CA3AF",
+                        color="#A4D65E",
                         text_align=ft.TextAlign.CENTER,
                     ),
                 ],
@@ -156,8 +174,8 @@ class ChatbotApp:
             ),
             padding=20,
             border_radius=12,
-            bgcolor="#1A1F3A",
-            border=ft.border.all(2, "#4A5568"),
+            bgcolor="#006341",
+            border=ft.border.all(2, "#00A859"),
             width=140,
             height=140,
             on_click=lambda e: self.show_register_screen(),
@@ -174,21 +192,47 @@ class ChatbotApp:
             alignment=ft.MainAxisAlignment.CENTER,
         )
         
+        # Botón de cambio de tema
+        theme_button = ft.IconButton(
+            icon=ft.Icons.LIGHT_MODE if self.is_dark_mode else ft.Icons.DARK_MODE,
+            icon_color="#A4D65E",
+            tooltip="Cambiar tema",
+            on_click=self.toggle_theme,
+        )
+        
+        # Logo como marca de agua
+        logo_path = "logo_udl_dark.png" if self.is_dark_mode else "logo_udl.png"
+        
         # Layout principal
         login_container = ft.Container(
             content=ft.Column(
                 [
-                    ft.Icon(ft.Icons.CHAT_BUBBLE_ROUNDED, size=70, color="#06B6D4"),
+                    # Botón de tema alineado a la derecha
+                    ft.Row(
+                        [
+                            ft.Container(expand=True),
+                            theme_button,
+                        ],
+                        alignment=ft.MainAxisAlignment.END,
+                    ),
+                    ft.Container(height=20),
+                    ft.Icon(ft.Icons.SMART_TOY_ROUNDED, size=80, color="#A4D65E"),
                     ft.Text(
                         "Chatbot IA",
                         size=32,
                         weight=ft.FontWeight.BOLD,
-                        color="#E5E7EB",
+                        color="white" if self.is_dark_mode else "#006341",
+                    ),
+                    ft.Text(
+                        "Universidad de León",
+                        size=14,
+                        color="#A4D65E",
+                        weight=ft.FontWeight.W_500,
                     ),
                     ft.Text(
                         "Selecciona tu usuario",
-                        size=14,
-                        color="#9CA3AF",
+                        size=13,
+                        color="#00A859",
                     ),
                     ft.Container(height=10),
                     groq_warning,
@@ -197,12 +241,19 @@ class ChatbotApp:
                         content=user_grid,
                         padding=10,
                     ),
+                    ft.Container(height=30),
+                    ft.Text(
+                        "Powered by Manu",
+                        size=12,
+                        color="#006341" if not self.is_dark_mode else "#A4D65E",
+                        weight=ft.FontWeight.W_500,
+                        italic=True,
+                    ),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                alignment=ft.MainAxisAlignment.CENTER,
                 scroll=ft.ScrollMode.AUTO,
             ),
-            padding=40,
+            padding=20,
             alignment=ft.alignment.center,
             expand=True,
         )
@@ -220,11 +271,13 @@ class ChatbotApp:
             can_reveal_password=True,
             width=300,
             autofocus=True,
-            bgcolor="#1A1F3A",
-            border_color="#4A5568",
-            focused_border_color="#06B6D4",
+            bgcolor="#006341",
+            border_color="#00A859",
+            focused_border_color="#A4D65E",
             border_radius=10,
             text_size=14,
+            color="white",
+            label_style=ft.TextStyle(color="white"),
         )
         
         # Mensaje de error
@@ -261,7 +314,7 @@ class ChatbotApp:
             on_click=on_login_click,
             width=300,
             height=45,
-            bgcolor="#06B6D4",
+            bgcolor="#00A859",
             color="white",
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=10),
@@ -271,24 +324,24 @@ class ChatbotApp:
         back_button = ft.TextButton(
             "← Cambiar usuario",
             on_click=on_back_click,
-            style=ft.ButtonStyle(color="#06B6D4"),
+            style=ft.ButtonStyle(color="#A4D65E"),
         )
         
         # Layout
         password_container = ft.Container(
             content=ft.Column(
                 [
-                    ft.Icon(ft.Icons.ACCOUNT_CIRCLE, size=80, color="#06B6D4"),
+                    ft.Icon(ft.Icons.ACCOUNT_CIRCLE, size=80, color="#A4D65E"),
                     ft.Text(
                         username,
                         size=28,
                         weight=ft.FontWeight.BOLD,
-                        color="#E5E7EB",
+                        color="white",
                     ),
                     ft.Text(
                         "Ingresa tu contraseña",
                         size=14,
-                        color="#9CA3AF",
+                        color="#A4D65E",
                     ),
                     ft.Container(height=30),
                     password_field,
@@ -319,11 +372,13 @@ class ChatbotApp:
             label="Nuevo Usuario",
             width=300,
             autofocus=True,
-            bgcolor="#1A1F3A",
-            border_color="#4A5568",
-            focused_border_color="#06B6D4",
+            bgcolor="#006341",
+            border_color="#00A859",
+            focused_border_color="#A4D65E",
             border_radius=10,
             text_size=14,
+            color="white",
+            label_style=ft.TextStyle(color="white"),
         )
         
         password_field = ft.TextField(
@@ -331,11 +386,13 @@ class ChatbotApp:
             password=True,
             can_reveal_password=True,
             width=300,
-            bgcolor="#1A1F3A",
-            border_color="#4A5568",
-            focused_border_color="#06B6D4",
+            bgcolor="#006341",
+            border_color="#00A859",
+            focused_border_color="#A4D65E",
             border_radius=10,
             text_size=14,
+            color="white",
+            label_style=ft.TextStyle(color="white"),
         )
         
         confirm_password_field = ft.TextField(
@@ -343,11 +400,13 @@ class ChatbotApp:
             password=True,
             can_reveal_password=True,
             width=300,
-            bgcolor="#1A1F3A",
-            border_color="#4A5568",
-            focused_border_color="#06B6D4",
+            bgcolor="#006341",
+            border_color="#00A859",
+            focused_border_color="#A4D65E",
             border_radius=10,
             text_size=14,
+            color="white",
+            label_style=ft.TextStyle(color="white"),
         )
         
         # Mensajes
@@ -411,7 +470,7 @@ class ChatbotApp:
             on_click=on_register_click,
             width=300,
             height=45,
-            bgcolor="#06B6D4",
+            bgcolor="#00A859",
             color="white",
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=10),
@@ -422,17 +481,17 @@ class ChatbotApp:
         back_button = None if first_user else ft.TextButton(
             "← Volver",
             on_click=on_back_click,
-            style=ft.ButtonStyle(color="#06B6D4"),
+            style=ft.ButtonStyle(color="#A4D65E"),
         )
         
         # Construir lista de elementos
         elements = [
-            ft.Icon(ft.Icons.PERSON_ADD_ROUNDED, size=80, color="#8B5CF6"),
+            ft.Icon(ft.Icons.SMART_TOY_ROUNDED, size=80, color="#A4D65E"),  # Robot icon
             ft.Text(
                 "Primer Usuario" if first_user else "Crear Cuenta",
                 size=32,
                 weight=ft.FontWeight.BOLD,
-                color="#E5E7EB",
+                color="white",
             ),
         ]
         
@@ -441,7 +500,7 @@ class ChatbotApp:
                 ft.Text(
                     "Crea tu primer usuario para comenzar",
                     size=14,
-                    color="#9CA3AF",
+                    color="#A4D65E",
                 )
             )
         
@@ -496,14 +555,16 @@ class ChatbotApp:
             max_lines=3,
             shift_enter=True,
             border_radius=25,
-            bgcolor="#1A1F3A",
-            border_color="#4A5568",
-            focused_border_color="#06B6D4",
+            bgcolor="#006341",
+            border_color="#00A859",
+            focused_border_color="#A4D65E",
             text_size=14,
+            color="white",
+            hint_style=ft.TextStyle(color="#A4D65E"),
         )
         
         # Indicador de carga
-        loading_indicator = ft.ProgressRing(visible=False, width=20, height=20, color="#06B6D4")
+        loading_indicator = ft.ProgressRing(visible=False, width=20, height=20, color="#A4D65E")
         
         def send_message(e):
             """Envía un mensaje al chatbot."""
@@ -565,8 +626,8 @@ class ChatbotApp:
             icon=ft.Icons.SEND_ROUNDED,
             on_click=send_message,
             tooltip="Enviar mensaje",
-            icon_color="#06B6D4",
-            bgcolor="#1A1F3A",
+            icon_color="#A4D65E",
+            bgcolor="#006341",
             style=ft.ButtonStyle(
                 shape=ft.CircleBorder(),
             )
@@ -593,12 +654,13 @@ class ChatbotApp:
                 self.page.update()
             
             confirm_dialog = ft.AlertDialog(
-                title=ft.Text("Confirmar"),
-                content=ft.Text("¿Estás seguro de que deseas limpiar todo el historial de chat?"),
+                title=ft.Text("Confirmar", color="white"),
+                content=ft.Text("¿Estás seguro de que deseas limpiar todo el historial de chat?", color="white"),
                 actions=[
                     ft.TextButton("Cancelar", on_click=lambda e: self.page.close(confirm_dialog)),
-                    ft.TextButton("Limpiar", on_click=confirm_clear),
-                ]
+                    ft.TextButton("Limpiar", on_click=confirm_clear, style=ft.ButtonStyle(color="#A4D65E")),
+                ],
+                bgcolor="#006341",
             )
             self.page.open(confirm_dialog)
         
@@ -627,7 +689,8 @@ class ChatbotApp:
                     "• Tu usuario\n"
                     "• Todo tu historial de conversaciones\n\n"
                     "No podrás recuperar esta información.",
-                    size=14
+                    size=14,
+                    color="white"
                 ),
                 actions=[
                     ft.TextButton("Cancelar", on_click=lambda e: self.page.close(confirm_dialog)),
@@ -636,48 +699,79 @@ class ChatbotApp:
                         on_click=confirm_delete,
                         style=ft.ButtonStyle(color="#F87171")
                     ),
-                ]
+                ],
+                bgcolor="#2D6A4F",
             )
             self.page.open(confirm_dialog)
         
-        # Barra superior
+        # Barra superior con diseño elegante
         top_bar = ft.Container(
             content=ft.Row(
                 [
-                    ft.Icon(ft.Icons.CHAT_BUBBLE_ROUNDED, color="#06B6D4"),
-                    ft.Text(
-                        f"Chat - {self.current_username}",
-                        size=20,
-                        weight=ft.FontWeight.BOLD,
-                        expand=True,
-                        color="#E5E7EB",
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="#A4D65E", size=28),
+                            ft.Column(
+                                [
+                                    ft.Text(
+                                        f"Chat - {self.current_username}",
+                                        size=18,
+                                        weight=ft.FontWeight.BOLD,
+                                        color="white",
+                                    ),
+                                    ft.Text(
+                                        "Universidad de León",
+                                        size=11,
+                                        color="#A4D65E",
+                                    ),
+                                ],
+                                spacing=0,
+                            ),
+                        ],
+                        spacing=12,
                     ),
-                    ft.IconButton(
-                        icon=ft.Icons.DELETE_SWEEP_ROUNDED,
-                        on_click=on_clear_chat_click,
-                        tooltip="Limpiar historial",
-                        icon_color="#9CA3AF",
-                    ),
-                    ft.IconButton(
-                        icon=ft.Icons.PERSON_REMOVE_ROUNDED,
-                        on_click=on_delete_account_click,
-                        tooltip="Eliminar cuenta",
-                        icon_color="#F87171",
-                    ),
-                    ft.IconButton(
-                        icon=ft.Icons.LOGOUT_ROUNDED,
-                        on_click=on_logout_click,
-                        tooltip="Cerrar sesión",
-                        icon_color="#9CA3AF",
+                    ft.Row(
+                        [
+                            ft.IconButton(
+                                icon=ft.Icons.LIGHT_MODE if self.is_dark_mode else ft.Icons.DARK_MODE,
+                                on_click=self.toggle_theme,
+                                tooltip="Cambiar tema",
+                                icon_color="#A4D65E",
+                                icon_size=20,
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.DELETE_SWEEP_ROUNDED,
+                                on_click=on_clear_chat_click,
+                                tooltip="Limpiar historial",
+                                icon_color="#A4D65E",
+                                icon_size=20,
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.PERSON_REMOVE_ROUNDED,
+                                on_click=on_delete_account_click,
+                                tooltip="Eliminar cuenta",
+                                icon_color="#F87171",
+                                icon_size=20,
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.LOGOUT_ROUNDED,
+                                on_click=on_logout_click,
+                                tooltip="Cerrar sesión",
+                                icon_color="#A4D65E",
+                                icon_size=20,
+                            ),
+                        ],
+                        spacing=5,
                     ),
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
-            padding=15,
-            bgcolor="#1A1F3A",
+            padding=ft.padding.only(left=20, right=15, top=15, bottom=15),
+            bgcolor="#006341",
+            border=ft.border.only(bottom=ft.BorderSide(2, "#00A859")),
         )
         
-        # Barra inferior con input
+        # Barra inferior con input elegante
         bottom_bar = ft.Container(
             content=ft.Row(
                 [
@@ -687,8 +781,9 @@ class ChatbotApp:
                 ],
                 spacing=10,
             ),
-            padding=15,
-            bgcolor="#1A1F3A",
+            padding=ft.padding.only(left=20, right=20, top=15, bottom=15),
+            bgcolor="#006341",
+            border=ft.border.only(top=ft.BorderSide(2, "#00A859")),
         )
         
         # Layout del chat
@@ -698,7 +793,7 @@ class ChatbotApp:
                 ft.Container(
                     content=message_list,
                     expand=True,
-                    bgcolor="#0F1729",
+                    bgcolor="white" if not self.is_dark_mode else "#1a1a1a",
                 ),
                 bottom_bar,
             ],
@@ -751,22 +846,23 @@ class ChatbotApp:
                 [
                     ft.Text(
                         "Tú" if is_user else "Asistente IA",
-                        size=12,
+                        size=11,
                         weight=ft.FontWeight.BOLD,
-                        color="#9CA3AF",
+                        color="#A4D65E",
                     ),
                     ft.Text(
                         content,
                         size=14,
                         selectable=True,
-                        color="#E5E7EB",
+                        color="white",
                     ),
                 ],
                 spacing=5,
             ),
             padding=15,
             border_radius=15,
-            bgcolor="#0E7490" if is_user else "#6D28D9",  # Teal oscuro para usuario, púrpura para asistente
+            bgcolor="#006341" if is_user else "#00A859",  # Verde oscuro para usuario, verde brillante para asistente
+            border=ft.border.all(1, "#00A859" if is_user else "#A4D65E"),
             margin=ft.margin.only(
                 left=100 if is_user else 0,
                 right=0 if is_user else 100,

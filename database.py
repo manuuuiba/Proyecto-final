@@ -50,7 +50,28 @@ class Database:
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # Tabla de perfiles de usuario
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id INTEGER PRIMARY KEY,
+                avatar_id INTEGER DEFAULT 1,
+                theme_preference TEXT DEFAULT 'dark',
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # Tabla de estadísticas de usuario
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_stats (
+                user_id INTEGER PRIMARY KEY,
+                total_messages INTEGER DEFAULT 0,
+                total_chats INTEGER DEFAULT 0,
+                last_login TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         ''')
         
@@ -328,3 +349,131 @@ class Database:
         except Exception as e:
             print(f"Error al obtener nombre de usuario: {e}")
             return None
+    
+    # ===============================
+    # Funciones para Perfiles de Usuario
+    # ===============================
+    
+    def initialize_user_profile(self, user_id: int) -> bool:
+        """Inicializa el perfil de un usuario recién creado."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('INSERT OR IGNORE INTO user_profiles (user_id) VALUES (?)', (user_id,))
+            cursor.execute('INSERT OR IGNORE INTO user_stats (user_id, last_login) VALUES (?, CURRENT_TIMESTAMP)', (user_id,))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error al inicializar perfil: {e}")
+            return False
+    
+    def get_user_avatar(self, user_id: int) -> int:
+        """Obtiene el ID del avatar del usuario."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT avatar_id FROM user_profiles WHERE user_id = ?', (user_id,))
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                return result['avatar_id']
+            else:
+                self.initialize_user_profile(user_id)
+                return 1
+        except sqlite3.Error:
+            return 1
+    
+    def set_user_avatar(self, user_id: int, avatar_id: int) -> bool:
+        """Establece el avatar del usuario."""
+        if avatar_id < 1 or avatar_id > 10:
+            return False
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('UPDATE user_profiles SET avatar_id = ? WHERE user_id = ?', (avatar_id, user_id))
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.Error:
+            return False
+    
+    def get_user_theme(self, user_id: int) -> str:
+        """Obtiene la preferencia de tema del usuario."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT theme_preference FROM user_profiles WHERE user_id = ?', (user_id,))
+            result = cursor.fetchone()
+            conn.close()
+            return result['theme_preference'] if result else 'dark'
+        except sqlite3.Error:
+            return 'dark'
+    
+    def set_user_theme(self, user_id: int, theme: str) -> bool:
+        """Establece la preferencia de tema del usuario."""
+        if theme not in ['dark', 'light']:
+            return False
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('UPDATE user_profiles SET theme_preference = ? WHERE user_id = ?', (theme, user_id))
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.Error:
+            return False
+    
+    def update_last_login(self, user_id: int) -> bool:
+        """Actualiza la fecha/hora del último login."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('UPDATE user_stats SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.Error:
+            return False
+    
+    def increment_message_count(self, user_id: int) -> bool:
+        """Incrementa el contador de mensajes del usuario."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('UPDATE user_stats SET total_messages = total_messages + 1 WHERE user_id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.Error:
+            return False
+    
+    def get_user_stats(self, user_id: int) -> Dict:
+        """Obtiene las estadísticas del usuario."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT total_messages, total_chats, last_login FROM user_stats WHERE user_id = ?', (user_id,))
+            stats_row = cursor.fetchone()
+            cursor.execute('SELECT created_at FROM users WHERE id = ?', (user_id,))
+            user_row = cursor.fetchone()
+            conn.close()
+            
+            if stats_row and user_row:
+                created_at = datetime.strptime(user_row['created_at'], '%Y-%m-%d %H:%M:%S')
+                days_active = (datetime.now() - created_at).days + 1
+                return {
+                    'total_messages': stats_row['total_messages'],
+                    'total_chats': stats_row['total_chats'],
+                    'last_login': stats_row['last_login'],
+                    'days_active': days_active,
+                    'avg_messages_per_day': round(stats_row['total_messages'] / days_active, 1) if days_active > 0 else 0
+                }
+            else:
+                self.initialize_user_profile(user_id)
+                return {'total_messages': 0, 'total_chats': 0, 'last_login': None, 'days_active': 1, 'avg_messages_per_day': 0}
+        except Exception:
+            return {'total_messages': 0, 'total_chats': 0, 'last_login': None, 'days_active': 1, 'avg_messages_per_day': 0}
